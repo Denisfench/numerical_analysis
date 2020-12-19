@@ -19,8 +19,8 @@ dxt = @(x, y) 2 * y - x;
 dyt = @(x, y) x;
 % forwardEulerTest = forwdEul(dxt, dyt, 1, 0, 1, 50);
 
-backEul = backEuler(1, 1, 1, 3, 0.01, 30);
-% frwdEul = forwdEul(1, 1, 1, 3, 0.1, 30);
+% backEul = backEuler(1, 1, 1, 3, 0.01, 30);
+frwdEul = forwdEul(1, 1, 1, 3, 0.1, 30);
 
 % the backEuler function implements the Backward Euler method for Bruesselator
 % problem, taking the initial concentrations X_0 and Y_0, constants A, B, 
@@ -114,28 +114,27 @@ function J = jacobi(X, Y, B, t)
     J(2, 2) = 1 + X^2 * t;
 end
 
-% Forward Euler method implementation 
-function z = forwdEul(X_init, Y_init, A, B, h, num_iter)
-% z is a 3D vector first column of which corresponds to the time step being
-% taken, the second column corresponds to the value of x, and the third
-% column corresponds to the value of y at a particular time step 
-temp = zeros(2, 1);
+% the forward Euler function implements the Forward Euler method for the Bruesselator
+% problem, taking the initial concentrations X_0 and Y_0, constants A, B, 
+% and the iteration time step df. ft is the final time T, T = 30.
+function z = forwdEul(X_init, Y_init, A, B, dt, ft)
+frwdEl = zeros(2, 1);
+num_iter = ft/dt; % the number of iterations for the forward Euler 
+% z = [time step, X value, Y value]
 z = zeros(num_iter, 3);
-F = zeros(2, 1);
-z(1, 1) = 1;
-z(1, 2) = X_init;
-z(1, 3) = Y_init;
-F = bruesselator(z(1, 2), z(1, 3), A, B);
+z(1, 1) = 0; % initialize time = 0
+z(1, 2) = X_init; % X initial 
+z(1, 3) = Y_init; % Y initial 
+% performing the actual Forward Euler loop, looping num_iter times 
 for i = 1:num_iter-1
-     % y{i+1} = y_{i} + h * F(x{i}, y{i});
-     temp = z(i, 3) + h * F; % F is 2D 
-     % update the value of x 
-     z(i+1, 2) = temp(1, 1);
-     % update the value of y 
-     z(i+1, 3) = temp(2, 1);
-     % set the value of time step T
-     z(i+1, 1) = i+1;
-     F = bruesselator(z(i+1, 2), z(i+1, 3), A, B);
+     F = bruesselator(z(i, 2), z(i, 3), A, B); % evaluating the system 
+     % of ODEs at the time step t_i, given X_{n+1}^{k} and Y_{n+1}^{k}
+     % approximating the solution using the Forward Euler method 
+     frwdEl(1, 1) = z(i, 2) + dt * F(1, 1);
+     frwdEl(2, 1) = z(i, 3) + dt * F(2, 1);
+     z(i+1, 2) = frwdEl(1, 1); % adding the X value at the time step t_i
+     z(i+1, 3) = frwdEl(2, 1); % adding the Y value at the time step t_i
+     z(i+1, 1) = z(i, 1) + dt; % adding the next time step 
 end 
 % plotting the time T vs forward Euler approximation
 figure("Name", "Forward Euler: plot of X and Y vs time");
