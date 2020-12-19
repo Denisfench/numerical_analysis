@@ -19,53 +19,70 @@ dxt = @(x, y) 2 * y - x;
 dyt = @(x, y) x;
 % forwardEulerTest = forwdEul(dxt, dyt, 1, 0, 1, 50);
 
-backEul = backEuler(xdt, ydt, 1, 1, 1, 3, 0.1, 30);
-frwdEul = forwdEul(1, 1, 1, 3, 0.1, 30);
+backEul = backEuler(xdt, ydt, 1, 1, 1, 3, 0.01, 30);
+% frwdEul = forwdEul(1, 1, 1, 3, 0.1, 30);
 
 % plotting the solution of Brusselator problem using the Forward Euler 
 % method 
 
 % function which implements the Backward Euler method
-function result = backEuler(fx, fy, X_init, Y_init, A, B, t_delta, num_iter)
-data = zeros(num_iter, 3);
-z_next = zeros(2, 1);
-z_prev = zeros(2, 1);
-F = zeros(2, 1);
-z_prev(1, 1) = X_init;
-z_prev(2, 1) = Y_init;
-for i = 1:num_iter
-   data(i, 1) = i; % the first column of data is the time step 
-   % using newton's method to find the value of f_next (Z^{n+1})
-   z_next = newton(z_prev(1, 1), z_prev(2, 1), A, B, num_iter);
-   % f_next = (newton(X_init, Y_init, A, B, num_iter) - fz_n) / t_delta;
-   % F(1, 1) = fx(z_newton(1, 1), z_newton(2, 1));
-   % F(2, 1) = fy(z_newton(1, 1), z_newton(2, 1));
-   % z_next = z_prev + t_delta * F;
-   z_prev = z_next;
-%    disp("z_next is");
-%    disp(z_next);
-   data(i, 2) = z_next(1, 1); % the second column of data is the value of x at time i 
-   data(i, 3) = z_next(2, 1); % the third column of data is the value of y at time i 
+function z = backEuler(fx, fy, X_init, Y_init, A, B, dt, ft)
+num_iter = ft/dt; % the number of iterations is the 
+z = zeros(num_iter, 3);
+z(1, 1) = 0; % time why is the first time step 1, not 0? it should be 0 and
+% increase in increments of dt 
+z(1, 2) = X_init; % x initial 
+z(1, 3) = Y_init; % y initial 
+for i = 1:num_iter - dt
+     % using newton's method to find the value of (z^{n+1})
+     newtn = newton(z(i, 2), z(i, 3), A, B, 10, dt);
+     disp(newtn);
+     % temp = z(i, [2, 3]) + t_delta * bruesselator(z(i, 2), z(i, 3), A, B);
+     % disp(z(i,:));
+     % update the value of x 
+     z(i+1, 2) = newtn(1, 1);
+     % update the value of y 
+     z(i+1, 3) = newtn(1, 2);
+     % set the value of time step T
+     z(i+1, 1) = z(i, 1) + dt;
 end 
-result = z_next;
+% plotting the time T vs forward Euler approximation
+figure("Name", "Backward Euler: plot of X and Y vs time");
+% plotting time vs x 
+plot(z(:, 1), z(:, 2), 'color', 'red', 'LineWidth', 2.0);
+xlabel("T");
+ylabel("X, Y");
+hold on;
+% plotting time vs y 
+plot(z(:, 1), z(:, 3), 'color', 'blue', 'LineWidth', 2.0);
+legend("species X", "species Y");
+hold off;
 end
 
-function result = newton(X_init, Y_init, A, B, num_iter)
-X = X_init;
-Y = Y_init;
-w_prev = zeros(2, 1);
-w_next = zeros(2, 1);
-w_prev(1, 1) = X_init;
-w_prev(2, 1) = Y_init;
-for i = 1:num_iter
-    % w_next = w_prev - jacobi(X, Y, B)\F(X, Y, A, B);
-    % w_next = w_prev - inv(jacobi(X, Y, B)) .* F(X, Y, A, B);
-    w_prev = w_next;
-    X = w_prev(1, 1);
-    Y = w_prev(2, 1);
+% testing the newton's method 
+% doing 5 iterations 
+function sol = newton(X_init, Y_init, A, B, num_iter, t)
+temp = zeros(2, 1);
+G = zeros(2, 1);
+F = zeros(2, 1);
+w = zeros(num_iter, 2);
+% entry 1 corresponds to x value, entry 2 corresponds to y value 
+w(1, 1) = X_init;
+w(1, 2) = Y_init;
+for i = 1:num_iter-1
+    % precomputing G(Z_{n+1}^k), Z^n = [X_intit, Y_init]
+    % computing F(Z_{n+1}^k)
+    F = bruesselator(w(i, 1), w(i, 2), A, B);
+    G(1, 1) = w(i, 1) - X_init - t * F(1, 1);
+    G(2, 1) = w(i, 2) - Y_init - t * F(2, 1);
+    % temp = transpose(w(i, :)) - inv(jacobi(w(i, 1), w(i, 2), B, t)) * bruesselator(w(i, 1), w(i, 2), A, B);
+    temp = transpose(w(i, :)) - inv(jacobi(w(i, 1), w(i, 2), B, t)) * G;
+    % disp(temp)
+    w(i+1, 1) = temp(1, 1);
+    w(i+1, 2) = temp (2, 1);
 end
-result = w_prev;
-end
+sol = w(num_iter, :);
+end 
 
 % defining function f_xdt as a function handle
 function f_xdt = f_xdt(x, y, a, b)
@@ -83,8 +100,8 @@ F = zeros(2, 1);
 F(1) = f_xdt(x, y, a, b);
 F(2) = f_ydt(x, y, b);
 df = F;
-disp("The Brusselator function is");
-disp(df);
+%disp("The Brusselator function is");
+%disp(df);
 end 
 
 
@@ -97,14 +114,24 @@ end
 
 % jacobi function computes the Jacobian matrix given parameters 
 % X, Y, B, and num_iter
-function J = jacobi(X, Y, B)
-J = zeros(2, 2);
-    J(1, 1) = 2*X*Y - B - 1;
-    J(1, 2) = X^2;
-    J(2, 1) = B - 2*X*Y;
-    J(2, 2) = - X^2;
-end
+% I believe the Jacobian below id incorrect 
+% function J = jacobi(X, Y, B)
+% J = zeros(2, 2);
+%     J(1, 1) = 2*X*Y - B - 1;
+%     J(1, 2) = X^2;
+%     J(2, 1) = B - 2*X*Y;
+%     J(2, 2) = - X^2;
+% end
 
+% The function below implements the Jacobian matrix for the function 
+% G(Z^{n+1})
+function J = jacobi(X, Y, B, t)
+    J = zeros(2, 2);
+    J(1, 1) = 1 - 2 * X * Y * t + B * t + t;
+    J(1, 2) = - X^2 * t;
+    J(2, 1) = - B * t + 2 * X * Y * t;
+    J(2, 2) = 1 + X^2 * t;
+end
 
 % Forward Euler method implementation 
 function z = forwdEul(X_init, Y_init, A, B, h, num_iter)
